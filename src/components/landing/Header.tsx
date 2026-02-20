@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import proteamLogo from "@/assets/proteam-logo.jpg";
 import { Menu, X, MessageCircle } from "lucide-react";
 
 const WHATSAPP_LINK = "https://wa.me/573001234567?text=Hola%2C%20quiero%20hacer%20un%20pedido";
@@ -29,10 +30,7 @@ const Header = () => {
       <div className="container mx-auto flex items-center justify-between">
         {/* Logo */}
         <a href="#inicio" className="flex items-center">
-          <span className="font-display text-2xl font-black tracking-widest">
-            <span className="text-brand-beige">PRO</span>
-            <span className="text-brand-terracota">TEAM</span>
-          </span>
+          <img src={proteamLogo} alt="PROTEAM" className="h-10 w-auto object-contain" />
         </a>
 
         {/* Desktop Nav */}
