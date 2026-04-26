@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, X, MessageCircle } from "lucide-react";
-
-const WHATSAPP_LINK = "https://wa.me/573001234567?text=Hola%2C%20quiero%20hacer%20un%20pedido";
+import { WHATSAPP_LINK } from "@/lib/whatsapp";
 
 const navLinks = [
   { label: "Inicio", href: "#inicio" },

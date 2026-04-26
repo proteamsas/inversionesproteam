@@ -1,6 +1,5 @@
 import { MapPin, MessageCircle, Phone } from "lucide-react";
-
-const WHATSAPP_LINK = "https://wa.me/573001234567?text=Hola%2C%20quiero%20información%20sobre%20sus%20productos";
+import { WHATSAPP_LINK } from "@/lib/whatsapp";
 
 const Footer = () => {
   return (

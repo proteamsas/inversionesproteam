@@ -3,8 +3,7 @@ import polloImg from "@/assets/product-pollo.jpg";
 import viscerasImg from "@/assets/product-visceras.jpg";
 import pescadoImg from "@/assets/product-pescado.jpg";
 import { MessageCircle } from "lucide-react";
-
-const WHATSAPP_LINK = "https://wa.me/573001234567?text=Hola%2C%20quiero%20información%20sobre%20sus%20productos";
+import { WHATSAPP_LINK } from "@/lib/whatsapp";
 
 const products = [
   {
