@@ -10,7 +10,7 @@ const products = [
     id: "cerdo",
     title: "Cerdo Importado",
     image: cerdoImg,
-    items: ["Sirloin de cerdo", "Punta chuleta", "Lomo de cerdo", "Paticas de cerdo"],
+    items: ["Sirloin de cerdo", "Punta chuleta", "Lomo de cerdo", "Paticas de cerdo", "Pierna con Hueso"],
     accent: "Importado · Premium",
   },
   {
@@ -31,7 +31,7 @@ const products = [
     id: "pescado",
     title: "Pescados y Otros",
     image: pescadoImg,
-    items: ["Bocachico entero", "Filete de Basa", "Papas Mydibel"],
+    items: ["Bocachico", "Basa Entera", "Basa Picada", "Papas Mydibel"],
     accent: "Mar · Río",
   },
 ];
