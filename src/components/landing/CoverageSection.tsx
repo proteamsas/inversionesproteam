@@ -38,7 +38,8 @@ const routes = [
       "Corozal",
       "Chinú",
       "Sampués",
-      "Ciénaga de Oro",
+      "San Marcos",
+      "Guaranda",
     ],
   },
   {
