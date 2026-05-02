@@ -2,12 +2,6 @@ import { Warehouse, Truck, MessageSquare } from "lucide-react";
 
 const pillars = [
   {
-    icon: Warehouse,
-    title: "Alta Capacidad",
-    description:
-      "Bodegas con capacidad de hasta 60 toneladas de producto congelado para garantizar disponibilidad constante.",
-  },
-  {
     icon: Truck,
     title: "Logística Eficiente",
     description:
@@ -17,7 +11,13 @@ const pillars = [
     icon: MessageSquare,
     title: "Atención Personalizada",
     description:
-      "Asesoría directa vía WhatsApp o visitas presenciales de nuestros asesores comerciales en tu zona.",
+      "Asesoría directa telefónica, vía WhatsApp o visitas presenciales de nuestros asesores comerciales en tu zona.",
+  },
+  {
+    icon: Warehouse,
+    title: "Alta Capacidad",
+    description:
+      "Bodegas con capacidad de hasta 60 toneladas de producto congelado para garantizar disponibilidad constante.",
   },
 ];
 
