@@ -51,11 +51,11 @@ const Footer = () => {
                 </p>
               </div>
               <a
-                href="tel:+573104619514"
+                href="tel:+573107643793"
                 className="flex items-center gap-3 text-brand-beige/70 hover:text-brand-beige text-sm font-body transition-colors"
               >
                 <Phone size={16} className="text-brand-terracota flex-shrink-0" />
-                +57 310 461 9514
+                +57 310 764 3793
               </a>
               <a
                 href={WHATSAPP_LINK}
