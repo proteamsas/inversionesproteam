@@ -14,7 +14,7 @@ import viscerasBofe from "@/assets/products/visceras-bofe.jpg";
 import viscerasHigado from "@/assets/products/visceras-higado.jpg";
 import pescadoBocachico from "@/assets/products/pescado-bocachico.jpg";
 import pescadoBasa from "@/assets/products/pescado-basa.jpg";
-import papasMydibel from "@/assets/products/papas-mydibel.jpg";
+import papasFrancesa from "@/assets/products/papas-francesa.jpg";
 import { MessageCircle, ChevronDown } from "lucide-react";
 import { WHATSAPP_LINK } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
@@ -71,11 +71,11 @@ const products: Category[] = [
     title: "Pescados y Otros",
     image: pescadoImg,
     accent: "Mar · Río",
-    items: ["Bocachico", "Basa Entera", "Basa Picada", "Papas Mydibel"],
+    items: ["Bocachico", "Basa Entera", "Basa Picada", "Papas a la Francesa 2.5 Kg"],
     featured: [
       { name: "Bocachico", en: "Argentino", image: pescadoBocachico },
       { name: "Basa Entera", en: "Basa HGT", image: pescadoBasa },
-      { name: "Papas Mydibel", en: "Frozen Fries", image: papasMydibel },
+      { name: "Papas a la Francesa", en: "2.5 Kg", image: papasFrancesa },
     ],
   },
 ];
