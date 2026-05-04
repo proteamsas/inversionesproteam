@@ -74,7 +74,7 @@ const products: Category[] = [
     items: ["Bocachico", "Basa Entera", "Basa Picada", "Papas a la Francesa 2.5 Kg"],
     featured: [
       { name: "Bocachico", en: "Argentino", image: pescadoBocachico },
-      { name: "Basa Entera", en: "Whole Basa", image: pescadoBasa },
+      { name: "Basa Entera", en: "Basa HGT", image: pescadoBasa },
       { name: "Papas a la Francesa", en: "2.5 Kg", image: papasFrancesa },
     ],
   },
