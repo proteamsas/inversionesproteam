@@ -1,4 +1,4 @@
-const WHATSAPP_PHONE = "573104619514";
+const WHATSAPP_PHONE = "573107643793";
 
 const WHATSAPP_MESSAGE = `Hola PROTEAM, quiero recibir información para mi negocio.
 
