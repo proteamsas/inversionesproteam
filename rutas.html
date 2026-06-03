@@ -40,6 +40,7 @@
   .cliente-info strong { display: block; font-size: 14px; font-weight: 600; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cliente-info span { font-size: 12px; color: #888; }
   .cliente-status { font-size: 22px; flex-shrink: 0; }
+  .nav-btn { background: #e8f5e9; border: 1px solid #1a472a; border-radius: 8px; font-size: 18px; padding: 6px 10px; cursor: pointer; flex-shrink: 0; margin-right: 4px; }
   .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 60px 20px; color: #888; font-size: 14px; }
   .spinner { width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #1a472a; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -168,8 +169,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const BASE = 'https://mayoristapip.bitrix24.co/rest/1/3f5r2cx2hfv0r9ve';
-const LAT_FIELD = 'UF_CRM_435';
-const LON_FIELD = 'UF_CRM_437';
+const LAT_FIELD = 'UF_CRM_LAT';
+const LON_FIELD = 'UF_CRM_LON';
 
 let clientes = [], clienteActual = null;
 let gpsLat = null, gpsLon = null, pinLat = null, pinLon = null;
@@ -262,6 +263,11 @@ async function seleccionarRuta(stageId, nombre) {
   }
 }
 
+function navegarWaze(lat, lon, e) {
+  e.stopPropagation();
+  window.open(`https://waze.com/ul?ll=${lat},${lon}&navigate=yes`, '_blank');
+}
+
 function renderClientes() {
   const total=clientes.length, done=completados.size;
   document.getElementById('progress').style.width=(total>0?(done/total)*100:0)+'%';
@@ -269,9 +275,11 @@ function renderClientes() {
   document.getElementById('clientes-container').innerHTML=clientes.map(c=>{
     const isDone=completados.has(c.dealId);
     const ini=c.nombre.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
+    const btnNav=(c.lat&&c.lon)?`<button class="nav-btn" onclick="navegarWaze(${c.lat},${c.lon},event)">🗺️</button>`:'';
     return `<div class="cliente-item" onclick="abrirMapa('${c.dealId}')">
       <div class="cliente-avatar ${isDone?'marcado':''}">${ini}</div>
       <div class="cliente-info"><strong>${c.nombre}</strong><span>${c.ciudad||'Sin ciudad'}</span></div>
+      ${btnNav}
       <div class="cliente-status">${isDone?'✅':(c.lat&&c.lon)?'📍':'⚪'}</div>
     </div>`;
   }).join('');
