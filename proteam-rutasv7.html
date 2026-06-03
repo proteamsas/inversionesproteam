@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Proteam — Rutas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; overflow: hidden; }
+
+  .screen { display: none; flex-direction: column; height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* HEADER */
+  .header { background: #1a472a; color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .header-back { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 2px 8px; }
+  .header h1 { font-size: 16px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+
+  .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+  /* RUTAS */
+  .ruta-selector { padding: 20px 16px; }
+  .ruta-selector h2 { font-size: 14px; color: #666; margin-bottom: 16px; }
+  .ruta-btn { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #e0e0e0; border-radius: 12px; background: #fff; margin-bottom: 12px; cursor: pointer; text-align: left; }
+  .ruta-btn:active { background: #f0f7f2; }
+  .ruta-icon { width: 44px; height: 44px; border-radius: 50%; background: #e8f5e9; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .ruta-info strong { display: block; font-size: 16px; font-weight: 600; color: #1a1a1a; }
+  .ruta-info span { font-size: 13px; color: #888; }
+  .ruta-count { margin-left: auto; background: #1a472a; color: #fff; font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 20px; min-width: 36px; text-align: center; }
+
+  /* CLIENTES */
+  .progress-bar { height: 4px; background: #e0e0e0; flex-shrink: 0; }
+  .progress-fill { height: 100%; background: #1a472a; transition: width 0.4s; }
+  .cliente-item { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 12px; cursor: pointer; background: #fff; }
+  .cliente-item:active { background: #f5f5f5; }
+  .cliente-avatar { width: 42px; height: 42px; border-radius: 50%; background: #e8f5e9; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: #1a472a; flex-shrink: 0; }
+  .cliente-avatar.marcado { background: #c8e6c9; }
+  .cliente-info { flex: 1; min-width: 0; }
+  .cliente-info strong { display: block; font-size: 14px; font-weight: 600; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cliente-info span { font-size: 12px; color: #888; }
+  .cliente-status { font-size: 22px; flex-shrink: 0; }
+  .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 60px 20px; color: #888; font-size: 14px; }
+  .spinner { width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #1a472a; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 20px; color: #aaa; font-size: 14px; text-align: center; }
+
+  /* MAPA — barra inferior FIJA en bottom, mapa ocupa el resto */
+  #screen-mapa { position: relative; }
+
+  .map-header-info { background: #fff; padding: 8px 16px; border-bottom: 1px solid #eee; flex-shrink: 0; }
+  .map-header-info .cliente-map-name { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+  .map-header-info .hint { font-size: 11px; color: #999; margin-top: 2px; }
+  .map-header-info .ya-ubic { font-size: 11px; color: #1a472a; }
+
+  /* El mapa ocupa TODO menos la barra de abajo (120px fijos) */
+  #map {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    bottom: 120px;
+  }
+
+  /* Barra inferior SIEMPRE visible, pegada al fondo */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 120px;
+    background: #fff;
+    border-top: 2px solid #e0e0e0;
+    padding: 10px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1000;
+  }
+
+  .coords-row { display: flex; align-items: center; justify-content: space-between; }
+  .coords-display { font-size: 12px; color: #555; font-family: monospace; font-weight: 500; }
+  .gps-btn { background: #e8f5e9; border: 1px solid #1a472a; border-radius: 8px; color: #1a472a; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+
+  .save-btn {
+    width: 100%;
+    padding: 14px;
+    background: #1a472a;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .save-btn:disabled { background: #bbb; color: #fff; }
+  .save-btn:active:not(:disabled) { background: #155222; }
+
+  /* El header del mapa necesita ajuste de posición */
+  #screen-mapa .header { position: relative; z-index: 10; flex-shrink: 0; }
+  #screen-mapa .map-header-info { position: relative; z-index: 10; flex-shrink: 0; }
+
+  /* Recalcular top del mapa considerando header + info bar */
+  #screen-mapa.active #map {
+    top: 0;
+  }
+
+  .toast { position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%); background: #1a472a; color: #fff; padding: 11px 22px; border-radius: 24px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; z-index: 9999; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- PANTALLA 1: RUTAS -->
+<div id="screen-rutas" class="screen active">
+  <div class="header"><div><h1>🥩 Proteam — Rutas</h1><div class="header-sub">Selecciona tu ruta del día</div></div></div>
+  <div class="scroll-area">
+    <div class="ruta-selector">
+      <h2>¿Cuál ruta vas a hacer hoy?</h2>
+      <button class="ruta-btn" onclick="seleccionarRuta('UC_A9EFPQ','Ruta 1')">
+        <div class="ruta-icon">🚚</div><div class="ruta-info"><strong>Ruta 1</strong><span>Clientes del día</span></div>
+        <div class="ruta-count" id="count-r1">…</div>
+      </button>
+      <button class="ruta-btn" onclick="seleccionarRuta('UC_0DH0L0','Ruta 2')">
+        <div class="ruta-icon">🚛</div><div class="ruta-info"><strong>Ruta 2</strong><span>Clientes del día</span></div>
+        <div class="ruta-count" id="count-r2">…</div>
+      </button>
+      <button class="ruta-btn" onclick="seleccionarRuta('UC_V2203A','Ruta 3')">
+        <div class="ruta-icon">🏍️</div><div class="ruta-info"><strong>Ruta 3</strong><span>Clientes del día</span></div>
+        <div class="ruta-count" id="count-r3">…</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA 2: CLIENTES -->
+<div id="screen-clientes" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('screen-rutas')">←</button>
+    <div><h1 id="lista-title">Ruta</h1><div class="header-sub" id="lista-sub">Cargando...</div></div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+  <div class="scroll-area" id="clientes-container"></div>
+</div>
+
+<!-- PANTALLA 3: MAPA -->
+<div id="screen-mapa" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('screen-clientes')">←</button>
+    <div><h1 id="map-nombre">Cliente</h1><div class="header-sub" id="map-ciudad">Ciudad</div></div>
+  </div>
+  <div class="map-header-info">
+    <div class="ya-ubic" id="map-ubic-prev"></div>
+    <div class="hint">Toca el mapa o arrastra el pin para ajustar</div>
+  </div>
+  <div id="map"></div>
+  <div class="bottom-bar">
+    <div class="coords-row">
+      <div class="coords-display" id="coords-display">⏳ Obteniendo GPS...</div>
+      <button class="gps-btn" onclick="centerGPS()">📍 Mi GPS</button>
+    </div>
+    <button class="save-btn" id="save-btn" onclick="guardarUbicacion()" disabled>✅ Guardar ubicación</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const BASE = 'https://mayoristapip.bitrix24.co/rest/1/3f5r2cx2hfv0r9ve';
+const LAT_FIELD = 'UF_CRM_435';
+const LON_FIELD = 'UF_CRM_437';
+
+let clientes = [], clienteActual = null;
+let gpsLat = null, gpsLon = null, pinLat = null, pinLon = null;
+let completados = new Set();
+let leafletMap = null, marker = null, mapIniciado = false;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screen = document.getElementById(id);
+  screen.classList.add('active');
+  if (id === 'screen-mapa') {
+    if (!mapIniciado) initMap();
+    else setTimeout(() => leafletMap && leafletMap.invalidateSize(), 100);
+  }
+}
+
+function showToast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function initMap() {
+  mapIniciado = true;
+  const lat = gpsLat||8.7575, lon = gpsLon||-75.8811;
+  leafletMap = L.map('map', { zoomControl: true }).setView([lat,lon], 17);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(leafletMap);
+  const icon = L.divIcon({
+    html: '<div style="width:34px;height:34px;background:#e53935;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.4)"></div>',
+    iconSize:[34,34], iconAnchor:[17,34], className:''
+  });
+  marker = L.marker([lat,lon], { icon, draggable:true }).addTo(leafletMap);
+  marker.on('drag dragend', e => { const p=e.target.getLatLng(); pinLat=p.lat; pinLon=p.lng; actualizarCoords(); });
+  leafletMap.on('click', e => { pinLat=e.latlng.lat; pinLon=e.latlng.lng; marker.setLatLng([pinLat,pinLon]); actualizarCoords(); });
+  setTimeout(() => leafletMap.invalidateSize(), 200);
+}
+
+function centerGPS() {
+  showToast('📡 Obteniendo GPS...', 4000);
+  navigator.geolocation.getCurrentPosition(pos => {
+    gpsLat=pos.coords.latitude; gpsLon=pos.coords.longitude;
+    pinLat=gpsLat; pinLon=gpsLon;
+    if(leafletMap) { leafletMap.setView([gpsLat,gpsLon],18); marker.setLatLng([gpsLat,gpsLon]); }
+    actualizarCoords();
+  }, ()=>showToast('❌ No se pudo obtener GPS'), { enableHighAccuracy:true, timeout:10000 });
+}
+
+function actualizarCoords() {
+  if(pinLat&&pinLon) {
+    document.getElementById('coords-display').textContent = `✅ ${pinLat.toFixed(6)}, ${pinLon.toFixed(6)}`;
+    document.getElementById('save-btn').disabled = false;
+  }
+}
+
+async function cargarConteos() {
+  for(const [sid,el] of [['UC_A9EFPQ','r1'],['UC_0DH0L0','r2'],['UC_V2203A','r3']]) {
+    try {
+      const r = await fetch(`${BASE}/crm.deal.list.json`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filter:{CATEGORY_ID:'0',STAGE_ID:sid},select:['ID']})});
+      document.getElementById(`count-${el}`).textContent = ((await r.json()).result||[]).length;
+    } catch(e) { document.getElementById(`count-${el}`).textContent='?'; }
+  }
+}
+
+async function seleccionarRuta(stageId, nombre) {
+  completados = new Set();
+  document.getElementById('lista-title').textContent = nombre;
+  document.getElementById('lista-sub').textContent = 'Cargando...';
+  document.getElementById('clientes-container').innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Consultando Bitrix...</span></div>';
+  showScreen('screen-clientes');
+  try {
+    const res = await fetch(`${BASE}/crm.deal.list.json`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filter:{CATEGORY_ID:'0',STAGE_ID:stageId},select:['ID','TITLE','CONTACT_ID']})});
+    const deals = (await res.json()).result||[];
+    if(!deals.length) {
+      document.getElementById('clientes-container').innerHTML='<div class="empty-state"><div style="font-size:40px">📋</div><span>Sin clientes en esta ruta hoy</span></div>';
+      document.getElementById('lista-sub').textContent='0 clientes'; return;
+    }
+    const cids = [...new Set(deals.map(d=>d.CONTACT_ID).filter(Boolean))];
+    const cmap = {};
+    for(let i=0;i<cids.length;i+=50) {
+      const sl=cids.slice(i,i+50), cmds={};
+      sl.forEach((cid,idx)=>{ cmds[`c${idx}`]=`crm.contact.get?id=${cid}&select[]=NAME&select[]=LAST_NAME&select[]=UF_CRM_1709759251514&select[]=${LAT_FIELD}&select[]=${LON_FIELD}`; });
+      const bd=await(await fetch(`${BASE}/batch.json`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({halt:0,cmd:cmds})})).json();
+      const results=bd.result?.result||{};
+      sl.forEach((cid,idx)=>{ const c=results[`c${idx}`]||{}; cmap[String(cid)]={nombre:[c.NAME,c.LAST_NAME].filter(Boolean).join(' ')||'Sin nombre',ciudad:c.UF_CRM_1709759251514||'',lat:c[LAT_FIELD]||null,lon:c[LON_FIELD]||null}; });
+    }
+    clientes=deals.map(d=>({dealId:d.ID,contactId:d.CONTACT_ID,...(cmap[String(d.CONTACT_ID)]||{nombre:d.TITLE,ciudad:'',lat:null,lon:null})}));
+    renderClientes(); iniciarGPS();
+  } catch(e) {
+    document.getElementById('clientes-container').innerHTML='<div class="empty-state"><div style="font-size:40px">📡</div><span>Error de conexión</span></div>';
+  }
+}
+
+function renderClientes() {
+  const total=clientes.length, done=completados.size;
+  document.getElementById('progress').style.width=(total>0?(done/total)*100:0)+'%';
+  document.getElementById('lista-sub').textContent=`${total} clientes · ${done} marcados`;
+  document.getElementById('clientes-container').innerHTML=clientes.map(c=>{
+    const isDone=completados.has(c.dealId);
+    const ini=c.nombre.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
+    return `<div class="cliente-item" onclick="abrirMapa('${c.dealId}')">
+      <div class="cliente-avatar ${isDone?'marcado':''}">${ini}</div>
+      <div class="cliente-info"><strong>${c.nombre}</strong><span>${c.ciudad||'Sin ciudad'}</span></div>
+      <div class="cliente-status">${isDone?'✅':(c.lat&&c.lon)?'📍':'⚪'}</div>
+    </div>`;
+  }).join('');
+}
+
+function abrirMapa(dealId) {
+  clienteActual=clientes.find(c=>c.dealId===dealId);
+  if(!clienteActual) return;
+  document.getElementById('map-nombre').textContent=clienteActual.nombre;
+  document.getElementById('map-ciudad').textContent=clienteActual.ciudad||'Sin ciudad';
+  document.getElementById('map-ubic-prev').textContent=(clienteActual.lat&&clienteActual.lon)?'📍 Ya tiene ubicación — puedes actualizarla':'';
+  document.getElementById('coords-display').textContent='⏳ Obteniendo GPS...';
+  document.getElementById('save-btn').disabled=true;
+  pinLat=null; pinLon=null;
+  showScreen('screen-mapa');
+  if(clienteActual.lat&&clienteActual.lon) {
+    const la=parseFloat(clienteActual.lat), lo=parseFloat(clienteActual.lon);
+    if(leafletMap){leafletMap.setView([la,lo],18);marker.setLatLng([la,lo]);}
+    pinLat=la; pinLon=lo; actualizarCoords();
+  } else { centerGPS(); }
+}
+
+function iniciarGPS() {
+  if(!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(pos=>{gpsLat=pos.coords.latitude;gpsLon=pos.coords.longitude;},()=>{},{enableHighAccuracy:true});
+}
+
+async function guardarUbicacion() {
+  if(!pinLat||!pinLon||!clienteActual) return;
+  const btn=document.getElementById('save-btn');
+  btn.textContent='Guardando...'; btn.disabled=true;
+  try {
+    const fields={};
+    fields[LAT_FIELD]=pinLat.toFixed(6);
+    fields[LON_FIELD]=pinLon.toFixed(6);
+    const res=await fetch('https://proteamsas.app.n8n.cloud/webhook/guardar-ubicacion',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:clienteActual.contactId,lat:pinLat.toFixed(6),lon:pinLon.toFixed(6)})});
+    const data=await res.json();
+    if(data.ok) {
+      completados.add(clienteActual.dealId);
+      const idx=clientes.findIndex(c=>c.dealId===clienteActual.dealId);
+      if(idx>=0){clientes[idx].lat=pinLat;clientes[idx].lon=pinLon;}
+      showToast('✅ Ubicación guardada en Bitrix');
+      setTimeout(()=>{showScreen('screen-clientes');renderClientes();},900);
+    } else throw new Error();
+  } catch(e) {
+    showToast('❌ Error al guardar, reintenta');
+    btn.textContent='✅ Guardar ubicación'; btn.disabled=false;
+  }
+}
+
+cargarConteos(); iniciarGPS();
+</script>
+</body>
+</html>
