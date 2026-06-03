@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proteam — Mapa de Rutas</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --border: #252933;
+    --accent: #e63946;
+    --accent2: #f4a261;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --green: #22c55e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── LOGIN SCREEN ── */
+  #loginScreen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 48px 40px;
+    width: 360px;
+    position: relative;
+  }
+
+  .login-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  .login-logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+
+  .login-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .login-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+  .login-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .login-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: 'IBM Plex Mono', monospace;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 3px;
+  }
+
+  .login-input:focus { border-color: var(--accent); }
+
+  .login-btn {
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 13px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 16px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: opacity 0.2s;
+  }
+
+  .login-btn:hover { opacity: 0.85; }
+
+  .login-error {
+    color: var(--accent);
+    font-size: 12px;
+    margin-top: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    display: none;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .header-logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .header-sep { width: 1px; height: 20px; background: var(--border); }
+
+  .header-title {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .header-badge {
+    margin-left: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 4px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .header-badge span { color: var(--green); font-weight: 600; }
+
+  /* ── CONTROLS ── */
+  .controls {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .ctrl-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    outline: none;
+    cursor: pointer;
+    min-width: 200px;
+    transition: border-color 0.2s;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  .btn-cargar {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: opacity 0.2s;
+  }
+
+  .btn-cargar:hover { opacity: 0.85; }
+  .btn-cargar:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .status-dot.loading { background: var(--accent2); animation: pulse 1s infinite; }
+  .status-dot.ok { background: var(--green); }
+  .status-dot.error { background: var(--accent); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .status-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── MAP ── */
+  #map {
+    flex: 1;
+    width: 100%;
+  }
+
+  /* Leaflet overrides */
+  .leaflet-container { background: #1a1d24; }
+  .leaflet-control-zoom a {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+  }
+  .leaflet-control-attribution {
+    background: rgba(13,15,20,0.8) !important;
+    color: var(--muted) !important;
+    font-size: 9px !important;
+  }
+
+  /* ── POPUP ── */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    color: var(--text);
+    padding: 0;
+  }
+
+  .leaflet-popup-tip { background: var(--surface); }
+  .leaflet-popup-content { margin: 0; }
+
+  .popup-inner {
+    padding: 16px 18px;
+    min-width: 200px;
+  }
+
+  .popup-ruta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding: 2px 6px;
+    display: inline-block;
+  }
+
+  .popup-nombre {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .popup-ciudad {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .popup-waze {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #00b4d8;
+    color: white;
+    text-decoration: none;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: opacity 0.2s;
+  }
+
+  .popup-waze:hover { opacity: 0.85; }
+
+  /* ── INFO PANEL ── */
+  .info-panel {
+    position: absolute;
+    bottom: 24px;
+    right: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+    z-index: 1000;
+    min-width: 180px;
+  }
+
+  .info-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .info-panel-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .info-panel-ruta {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .info-panel-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .info-panel-count-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">Inversiones Proteam SAS</div>
+    <div class="login-title">Mapa de Clientes</div>
+    <div class="login-sub">Acceso restringido — solo uso interno</div>
+    <div class="login-label">Contraseña</div>
+    <input type="password" class="login-input" id="passInput" placeholder="••••••••" onkeydown="if(event.key==='Enter') verificarClave()">
+    <button class="login-btn" onclick="verificarClave()">Entrar</button>
+    <div class="login-error" id="loginError">Contraseña incorrecta</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="header">
+  <div class="header-logo">Proteam</div>
+  <div class="header-sep"></div>
+  <div class="header-title">Mapa de Clientes por Ruta</div>
+  <div class="header-badge">Con coordenadas: <span id="totalGlobal">—</span></div>
+</div>
+
+<div class="controls">
+  <span class="ctrl-label">Ruta</span>
+  <select id="rutaSelect">
+    <option value="TODAS">Todas las rutas</option>
+    <option value="APARTADO">Apartadó</option>
+    <option value="ARBOLETES">Arboletes</option>
+    <option value="CAUCASIA">Caucasia</option>
+    <option value="EL GOLFO">El Golfo</option>
+    <option value="MOMPOX">Mompox</option>
+    <option value="MONTERIA">Montería</option>
+    <option value="MONTES DE MARIA">Montes de María</option>
+    <option value="SAN MARCOS">San Marcos</option>
+    <option value="SAN ONOFRE">San Onofre</option>
+    <option value="SINCELEJO">Sincelejo</option>
+    <option value="TIERRALTA">Tierralta</option>
+    <option value="URABA">Urabá</option>
+    <option value="VIA SINCELEJO">Vía Sincelejo</option>
+  </select>
+  <button class="btn-cargar" id="btnCargar" onclick="cargarRuta()">Cargar</button>
+  <div class="status-dot" id="statusDot"></div>
+  <span class="status-text" id="statusText">Selecciona una ruta</span>
+</div>
+
+<div style="position:relative; flex:1; display:flex; flex-direction:column;">
+  <div id="map"></div>
+  <div class="info-panel" id="infoPanel" style="display:none;">
+    <div class="info-panel-label">Ruta activa</div>
+    <div class="info-panel-ruta" id="infoPanelRuta">—</div>
+    <div class="info-panel-count" id="infoPanelCount" style="color: var(--accent);">0</div>
+    <div class="info-panel-count-label">clientes mapeados</div>
+  </div>
+</div>
+
+<script>
+const WEBHOOK_URL = 'https://proteamsas.app.n8n.cloud/webhook/mapa-rutas';
+const HEADER_KEY = 'proteam2026';
+const CLAVE_APP = 'proteam2026';
+
+const COLORES = {
+  'APARTADO':       '#e63946',
+  'ARBOLETES':      '#f4a261',
+  'CAUCASIA':       '#2a9d8f',
+  'EL GOLFO':       '#e9c46a',
+  'MOMPOX':         '#457b9d',
+  'MONTERIA':       '#e76f51',
+  'MONTES DE MARIA':'#6a4c93',
+  'SAN MARCOS':     '#1d8348',
+  'SAN ONOFRE':     '#0077b6',
+  'SINCELEJO':      '#c77dff',
+  'TIERRALTA':      '#f77f00',
+  'URABA':          '#4cc9f0',
+  'VIA SINCELEJO':  '#b5838d',
+  'TODAS':          '#e63946'
+};
+
+// ── LOGIN ──
+function verificarClave() {
+  const val = document.getElementById('passInput').value;
+  if (val === CLAVE_APP) {
+    document.getElementById('loginScreen').style.display = 'none';
+    iniciarMapa();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('passInput').value = '';
+    document.getElementById('passInput').focus();
+  }
+}
+
+// ── MAPA ──
+let map, markersLayer;
+
+function iniciarMapa() {
+  map = L.map('map', { zoomControl: true }).setView([8.757, -75.881], 8);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  markersLayer = L.layerGroup().addTo(map);
+}
+
+function getIcon(ruta) {
+  const color = COLORES[ruta] || '#888';
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      position:relative;
+      width:28px; height:28px;
+    ">
+      <div style="
+        width:22px; height:22px;
+        background:${color};
+        border-radius:50% 50% 50% 0;
+        transform:rotate(-45deg);
+        border:2px solid rgba(255,255,255,0.9);
+        box-shadow:0 2px 8px rgba(0,0,0,0.5);
+        position:absolute; top:0; left:0;
+      "></div>
+    </div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 22],
+    popupAnchor: [0, -24]
+  });
+}
+
+async function cargarRuta() {
+  const ruta = document.getElementById('rutaSelect').value;
+  const btn = document.getElementById('btnCargar');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+
+  btn.disabled = true;
+  dot.className = 'status-dot loading';
+  txt.textContent = 'Consultando base de datos...';
+
+  try {
+    const url = `${WEBHOOK_URL}?ruta=${encodeURIComponent(ruta)}`;
+    const res = await fetch(url, {
+      headers: { 'x-proteam-key': HEADER_KEY }
+    });
+
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+
+    const data = await res.json();
+    const clientes = data.clientes || [];
+
+    markersLayer.clearLayers();
+
+    if (clientes.length === 0) {
+      dot.className = 'status-dot error';
+      txt.textContent = 'Sin clientes con coordenadas en esta ruta';
+      document.getElementById('infoPanel').style.display = 'none';
+      btn.disabled = false;
+      return;
+    }
+
+    clientes.forEach(c => {
+      const lat = parseFloat(c.LAT);
+      const lon = parseFloat(c.LON);
+      if (isNaN(lat) || isNaN(lon)) return;
+
+      const rutaNombre = c.RUTA_NOMBRE || ruta;
+      const color = COLORES[rutaNombre] || '#888';
+
+      const marker = L.marker([lat, lon], { icon: getIcon(rutaNombre) });
+
+      marker.bindPopup(`
+        <div class="popup-inner">
+          <div class="popup-ruta" style="background:${color}22; color:${color}; border:1px solid ${color}44;">
+            ${rutaNombre}
+          </div>
+          <div class="popup-nombre">${c.NOMBRE || 'Sin nombre'}</div>
+          <div class="popup-ciudad">📍 ${c.CIUDAD || '—'}</div>
+          <a class="popup-waze" href="https://waze.com/ul?ll=${lat},${lon}&navigate=yes" target="_blank">
+            🗺️ Abrir en Waze
+          </a>
+        </div>
+      `, { maxWidth: 260 });
+
+      markersLayer.addLayer(marker);
+    });
+
+    // Zoom al grupo
+    const group = L.featureGroup(markersLayer.getLayers());
+    if (group.getLayers().length > 0) {
+      map.fitBounds(group.getBounds().pad(0.15));
+    }
+
+    // Panel info
+    const nombreRuta = ruta === 'TODAS' ? 'Todas las rutas' :
+      document.getElementById('rutaSelect').options[document.getElementById('rutaSelect').selectedIndex].text;
+
+    document.getElementById('infoPanel').style.display = 'block';
+    document.getElementById('infoPanelRuta').textContent = nombreRuta;
+    document.getElementById('infoPanelCount').textContent = clientes.length;
+    document.getElementById('infoPanelCount').style.color = COLORES[ruta] || 'var(--accent)';
+    document.getElementById('totalGlobal').textContent = clientes.length;
+
+    dot.className = 'status-dot ok';
+    txt.textContent = `${clientes.length} cliente${clientes.length !== 1 ? 's' : ''} cargado${clientes.length !== 1 ? 's' : ''}`;
+
+  } catch (err) {
+    dot.className = 'status-dot error';
+    txt.textContent = 'Error al consultar — revisa n8n';
+    console.error(err);
+  }
+
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
