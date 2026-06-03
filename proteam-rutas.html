@@ -260,7 +260,7 @@ async function seleccionarRuta(stageId, nombre) {
       const slice = contactIds.slice(i, i + 50);
       const cmds = {};
       slice.forEach((cid, idx) => {
-        cmds[`c${idx}`] = `crm.contact.get?id=${cid}&select[]=NAME&select[]=LAST_NAME&select[]=UF_CRM_1709759251514&select[]=UF_CRM_LAT&select[]=UF_CRM_LON`;
+        cmds[`c${idx}`] = `crm.contact.get?id=${cid}&select[]=NAME&select[]=LAST_NAME&select[]=UF_CRM_1709759251514&select[]=UF_CRM_435&select[]=UF_CRM_437`;
       });
       const bData = await (await fetch(`${BASE}/batch.json`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -272,7 +272,7 @@ async function seleccionarRuta(stageId, nombre) {
         contactMap[String(cid)] = {
           nombre: [c.NAME, c.LAST_NAME].filter(Boolean).join(' ') || 'Sin nombre',
           ciudad: c.UF_CRM_1709759251514 || '',
-          lat: c.UF_CRM_LAT || null, lon: c.UF_CRM_LON || null
+          lat: c.UF_CRM_435 || null, lon: c.UF_CRM_437 || null
         };
       });
     }
@@ -335,7 +335,7 @@ async function guardarUbicacion() {
   try {
     const res = await fetch(`${BASE}/crm.contact.update.json`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: clienteActual.contactId, fields: { UF_CRM_LAT: String(pinLat.toFixed(6)), UF_CRM_LON: String(pinLon.toFixed(6)) } })
+      body: JSON.stringify({ id: clienteActual.contactId, fields: { UF_CRM_435: String(pinLat.toFixed(6)), UF_CRM_437: String(pinLon.toFixed(6)) } })
     });
     const data = await res.json();
     if (data.result) {
