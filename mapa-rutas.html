@@ -192,6 +192,13 @@
     text-transform: uppercase;
   }
 
+  .ctrl-sep {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
   select {
     background: var(--bg);
     border: 1px solid var(--border);
@@ -206,6 +213,7 @@
   }
 
   select:focus { border-color: var(--accent); }
+  select:disabled { opacity: 0.35; cursor: not-allowed; }
 
   .btn-cargar {
     background: var(--accent);
@@ -223,6 +231,24 @@
 
   .btn-cargar:hover { opacity: 0.85; }
   .btn-cargar:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Botón centrar */
+  .btn-centrar {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .btn-centrar:hover { border-color: var(--accent); background: var(--surface); }
+  .btn-centrar.visible { display: flex; }
 
   .status-dot {
     width: 7px; height: 7px;
@@ -243,10 +269,7 @@
   }
 
   /* ── MAP ── */
-  #map {
-    flex: 1;
-    width: 100%;
-  }
+  #map { flex: 1; width: 100%; }
 
   /* Leaflet overrides */
   .leaflet-container { background: #1a1d24; }
@@ -332,13 +355,6 @@
     min-width: 180px;
   }
 
-  .info-panel::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-  }
-
   .info-panel-label {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 9px;
@@ -351,8 +367,15 @@
   .info-panel-ruta {
     font-size: 16px;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     line-height: 1.2;
+  }
+
+  .info-panel-ciudad {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-family: 'IBM Plex Mono', monospace;
   }
 
   .info-panel-count {
@@ -394,7 +417,7 @@
 
 <div class="controls">
   <span class="ctrl-label">Ruta</span>
-  <select id="rutaSelect">
+  <select id="rutaSelect" onchange="onRutaChange()">
     <option value="TODAS">Todas las rutas</option>
     <option value="APARTADO">Apartadó</option>
     <option value="ARBOLETES">Arboletes</option>
@@ -411,6 +434,15 @@
     <option value="VIA SINCELEJO">Vía Sincelejo</option>
   </select>
   <button class="btn-cargar" id="btnCargar" onclick="cargarRuta()">Cargar</button>
+
+  <div class="ctrl-sep" id="ciudadSep" style="display:none;"></div>
+  <span class="ctrl-label" id="ciudadLabel" style="display:none;">Ciudad</span>
+  <select id="ciudadSelect" style="display:none; min-width:160px;" onchange="filtrarCiudad()">
+    <option value="TODAS">Todas</option>
+  </select>
+
+  <button class="btn-centrar" id="btnCentrar" onclick="centrarVista()">⊙ Centrar</button>
+
   <div class="status-dot" id="statusDot"></div>
   <span class="status-text" id="statusText">Selecciona una ruta</span>
 </div>
@@ -418,8 +450,9 @@
 <div style="position:relative; flex:1; display:flex; flex-direction:column;">
   <div id="map"></div>
   <div class="info-panel" id="infoPanel" style="display:none;">
-    <div class="info-panel-label">Ruta activa</div>
+    <div class="info-panel-label">Vista activa</div>
     <div class="info-panel-ruta" id="infoPanelRuta">—</div>
+    <div class="info-panel-ciudad" id="infoPanelCiudad"></div>
     <div class="info-panel-count" id="infoPanelCount" style="color: var(--accent);">0</div>
     <div class="info-panel-count-label">clientes mapeados</div>
   </div>
@@ -431,20 +464,20 @@ const HEADER_KEY = 'proteam2026';
 const CLAVE_APP = 'proteam2026';
 
 const COLORES = {
-  'APARTADO':       '#e63946',
-  'ARBOLETES':      '#f4a261',
-  'CAUCASIA':       '#2a9d8f',
-  'EL GOLFO':       '#e9c46a',
-  'MOMPOX':         '#457b9d',
-  'MONTERIA':       '#e76f51',
-  'MONTES DE MARIA':'#6a4c93',
-  'SAN MARCOS':     '#1d8348',
-  'SAN ONOFRE':     '#0077b6',
-  'SINCELEJO':      '#c77dff',
-  'TIERRALTA':      '#f77f00',
-  'URABA':          '#4cc9f0',
-  'VIA SINCELEJO':  '#b5838d',
-  'TODAS':          '#e63946'
+  'APARTADO':        '#e63946',
+  'ARBOLETES':       '#f4a261',
+  'CAUCASIA':        '#2a9d8f',
+  'EL GOLFO':        '#e9c46a',
+  'MOMPOX':          '#457b9d',
+  'MONTERIA':        '#e76f51',
+  'MONTES DE MARIA': '#6a4c93',
+  'SAN MARCOS':      '#1d8348',
+  'SAN ONOFRE':      '#0077b6',
+  'SINCELEJO':       '#c77dff',
+  'TIERRALTA':       '#f77f00',
+  'URABA':           '#4cc9f0',
+  'VIA SINCELEJO':   '#b5838d',
+  'TODAS':           '#e63946'
 };
 
 // ── LOGIN ──
@@ -462,15 +495,16 @@ function verificarClave() {
 
 // ── MAPA ──
 let map, markersLayer;
+let todosClientes = [];       // todos los cargados de la ruta
+let markersVisibles = [];     // markers actuales en mapa
+let rutaActual = '';
 
 function iniciarMapa() {
   map = L.map('map', { zoomControl: true }).setView([8.757, -75.881], 8);
-
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 19
   }).addTo(map);
-
   markersLayer = L.layerGroup().addTo(map);
 }
 
@@ -478,19 +512,10 @@ function getIcon(ruta) {
   const color = COLORES[ruta] || '#888';
   return L.divIcon({
     className: '',
-    html: `<div style="
-      position:relative;
-      width:28px; height:28px;
-    ">
-      <div style="
-        width:22px; height:22px;
-        background:${color};
-        border-radius:50% 50% 50% 0;
-        transform:rotate(-45deg);
-        border:2px solid rgba(255,255,255,0.9);
-        box-shadow:0 2px 8px rgba(0,0,0,0.5);
-        position:absolute; top:0; left:0;
-      "></div>
+    html: `<div style="position:relative;width:28px;height:28px;">
+      <div style="width:22px;height:22px;background:${color};border-radius:50% 50% 50% 0;
+        transform:rotate(-45deg);border:2px solid rgba(255,255,255,0.9);
+        box-shadow:0 2px 8px rgba(0,0,0,0.5);position:absolute;top:0;left:0;"></div>
     </div>`,
     iconSize: [22, 22],
     iconAnchor: [11, 22],
@@ -498,8 +523,90 @@ function getIcon(ruta) {
   });
 }
 
+function onRutaChange() {
+  // Al cambiar ruta, resetear filtro ciudad
+  ocultarFiltrosCiudad();
+}
+
+function ocultarFiltrosCiudad() {
+  document.getElementById('ciudadSep').style.display = 'none';
+  document.getElementById('ciudadLabel').style.display = 'none';
+  document.getElementById('ciudadSelect').style.display = 'none';
+}
+
+function mostrarFiltrosCiudad(ciudades) {
+  const sel = document.getElementById('ciudadSelect');
+  sel.innerHTML = '<option value="TODAS">Todas las ciudades</option>';
+  ciudades.sort().forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+  document.getElementById('ciudadSep').style.display = 'block';
+  document.getElementById('ciudadLabel').style.display = 'inline';
+  sel.style.display = 'inline-block';
+}
+
+function renderMarkers(clientes) {
+  markersLayer.clearLayers();
+  markersVisibles = [];
+
+  clientes.forEach(c => {
+    const lat = parseFloat(c.LAT);
+    const lon = parseFloat(c.LON);
+    if (isNaN(lat) || isNaN(lon)) return;
+
+    const rutaNombre = c.RUTA_NOMBRE || rutaActual;
+    const color = COLORES[rutaNombre] || '#888';
+
+    const marker = L.marker([lat, lon], { icon: getIcon(rutaNombre) });
+    marker.bindPopup(`
+      <div class="popup-inner">
+        <div class="popup-ruta" style="background:${color}22;color:${color};border:1px solid ${color}44;">
+          ${rutaNombre}
+        </div>
+        <div class="popup-nombre">${c.NOMBRE || 'Sin nombre'}</div>
+        <div class="popup-ciudad">📍 ${c.CIUDAD || '—'}</div>
+        <a class="popup-waze" href="https://waze.com/ul?ll=${lat},${lon}&navigate=yes" target="_blank">
+          🗺️ Abrir en Waze
+        </a>
+      </div>
+    `, { maxWidth: 260 });
+
+    markersLayer.addLayer(marker);
+    markersVisibles.push(marker);
+  });
+}
+
+function centrarVista() {
+  if (markersVisibles.length === 0) return;
+  const group = L.featureGroup(markersVisibles);
+  map.fitBounds(group.getBounds().pad(0.15));
+}
+
+function filtrarCiudad() {
+  const ciudad = document.getElementById('ciudadSelect').value;
+  const rutaNombre = document.getElementById('rutaSelect').options[document.getElementById('rutaSelect').selectedIndex].text;
+
+  let filtrados = ciudad === 'TODAS'
+    ? todosClientes
+    : todosClientes.filter(c => c.CIUDAD === ciudad);
+
+  renderMarkers(filtrados);
+
+  // Actualizar panel
+  document.getElementById('infoPanelCiudad').textContent = ciudad === 'TODAS' ? '' : '📍 ' + ciudad;
+  document.getElementById('infoPanelCount').textContent = filtrados.length;
+  document.getElementById('totalGlobal').textContent = filtrados.length;
+
+  // Centrar automático al cambiar ciudad
+  setTimeout(centrarVista, 50);
+}
+
 async function cargarRuta() {
   const ruta = document.getElementById('rutaSelect').value;
+  rutaActual = ruta;
   const btn = document.getElementById('btnCargar');
   const dot = document.getElementById('statusDot');
   const txt = document.getElementById('statusText');
@@ -507,72 +614,50 @@ async function cargarRuta() {
   btn.disabled = true;
   dot.className = 'status-dot loading';
   txt.textContent = 'Consultando base de datos...';
+  ocultarFiltrosCiudad();
+  document.getElementById('btnCentrar').classList.remove('visible');
+  document.getElementById('infoPanel').style.display = 'none';
 
   try {
     const url = `${WEBHOOK_URL}?ruta=${encodeURIComponent(ruta)}`;
-    const res = await fetch(url, {
-      headers: { 'x-proteam-key': HEADER_KEY }
-    });
-
+    const res = await fetch(url, { headers: { 'x-proteam-key': HEADER_KEY } });
     if (!res.ok) throw new Error(`Error ${res.status}`);
 
     const data = await res.json();
-    const clientes = data.clientes || [];
+    todosClientes = (data.clientes || []).filter(c => {
+      const lat = parseFloat(c.LAT);
+      const lon = parseFloat(c.LON);
+      return !isNaN(lat) && !isNaN(lon);
+    });
 
-    markersLayer.clearLayers();
-
-    if (clientes.length === 0) {
+    if (todosClientes.length === 0) {
       dot.className = 'status-dot error';
       txt.textContent = 'Sin clientes con coordenadas en esta ruta';
-      document.getElementById('infoPanel').style.display = 'none';
       btn.disabled = false;
       return;
     }
 
-    clientes.forEach(c => {
-      const lat = parseFloat(c.LAT);
-      const lon = parseFloat(c.LON);
-      if (isNaN(lat) || isNaN(lon)) return;
+    renderMarkers(todosClientes);
+    setTimeout(centrarVista, 50);
 
-      const rutaNombre = c.RUTA_NOMBRE || ruta;
-      const color = COLORES[rutaNombre] || '#888';
-
-      const marker = L.marker([lat, lon], { icon: getIcon(rutaNombre) });
-
-      marker.bindPopup(`
-        <div class="popup-inner">
-          <div class="popup-ruta" style="background:${color}22; color:${color}; border:1px solid ${color}44;">
-            ${rutaNombre}
-          </div>
-          <div class="popup-nombre">${c.NOMBRE || 'Sin nombre'}</div>
-          <div class="popup-ciudad">📍 ${c.CIUDAD || '—'}</div>
-          <a class="popup-waze" href="https://waze.com/ul?ll=${lat},${lon}&navigate=yes" target="_blank">
-            🗺️ Abrir en Waze
-          </a>
-        </div>
-      `, { maxWidth: 260 });
-
-      markersLayer.addLayer(marker);
-    });
-
-    // Zoom al grupo
-    const group = L.featureGroup(markersLayer.getLayers());
-    if (group.getLayers().length > 0) {
-      map.fitBounds(group.getBounds().pad(0.15));
-    }
+    // Ciudades únicas
+    const ciudades = [...new Set(todosClientes.map(c => c.CIUDAD).filter(Boolean))];
+    if (ciudades.length > 1) mostrarFiltrosCiudad(ciudades);
 
     // Panel info
-    const nombreRuta = ruta === 'TODAS' ? 'Todas las rutas' :
-      document.getElementById('rutaSelect').options[document.getElementById('rutaSelect').selectedIndex].text;
+    const nombreRuta = ruta === 'TODAS' ? 'Todas las rutas'
+      : document.getElementById('rutaSelect').options[document.getElementById('rutaSelect').selectedIndex].text;
 
     document.getElementById('infoPanel').style.display = 'block';
     document.getElementById('infoPanelRuta').textContent = nombreRuta;
-    document.getElementById('infoPanelCount').textContent = clientes.length;
+    document.getElementById('infoPanelCiudad').textContent = '';
+    document.getElementById('infoPanelCount').textContent = todosClientes.length;
     document.getElementById('infoPanelCount').style.color = COLORES[ruta] || 'var(--accent)';
-    document.getElementById('totalGlobal').textContent = clientes.length;
+    document.getElementById('totalGlobal').textContent = todosClientes.length;
+    document.getElementById('btnCentrar').classList.add('visible');
 
     dot.className = 'status-dot ok';
-    txt.textContent = `${clientes.length} cliente${clientes.length !== 1 ? 's' : ''} cargado${clientes.length !== 1 ? 's' : ''}`;
+    txt.textContent = `${todosClientes.length} cliente${todosClientes.length !== 1 ? 's' : ''} cargado${todosClientes.length !== 1 ? 's' : ''}`;
 
   } catch (err) {
     dot.className = 'status-dot error';
