@@ -4,11 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Proteam — Rutas</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; overflow: hidden; }
 
-  .screen { display: none; flex-direction: column; height: 100vh; }
+  .screen { display: none; flex-direction: column; height: 100dvh; }
   .screen.active { display: flex; }
 
   /* HEADER */
@@ -46,33 +48,41 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 20px; color: #aaa; font-size: 14px; text-align: center; }
 
-  /* MAPA — barra inferior FIJA en bottom, mapa ocupa el resto */
-  #screen-mapa { position: relative; }
+  /* ── PANTALLA MAPA ── */
+  /* Flexbox vertical: header → info-bar → mapa → bottom-bar
+     Cada parte es flex-shrink:0 excepto el mapa que es flex:1
+     El navegador nunca puede tapar el bottom-bar porque está en el flujo normal */
 
-  .map-header-info { background: #fff; padding: 8px 16px; border-bottom: 1px solid #eee; flex-shrink: 0; }
+  #screen-mapa { overflow: hidden; }
+
+  .map-header-info {
+    background: #fff;
+    padding: 8px 16px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+  }
   .map-header-info .cliente-map-name { font-size: 14px; font-weight: 600; color: #1a1a1a; }
   .map-header-info .hint { font-size: 11px; color: #999; margin-top: 2px; }
   .map-header-info .ya-ubic { font-size: 11px; color: #1a472a; }
 
-  /* El mapa ocupa TODO menos la barra de abajo (120px fijos) */
+  /* El mapa ocupa TODO el espacio disponible entre info-bar y bottom-bar */
   #map {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    bottom: 140px;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
   }
 
-  /* Barra inferior SIEMPRE visible, pegada al fondo */
+  /* Barra inferior — parte del flujo normal, nunca tapada */
   .bottom-bar {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    
+    flex-shrink: 0;
     background: #fff;
     border-top: 2px solid #e0e0e0;
-    padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    z-index: 1000;
+    /* Safe area para muescas, pero sin depender de ella */
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
   }
 
   .coords-row { display: flex; align-items: center; justify-content: space-between; }
@@ -81,12 +91,12 @@
 
   .save-btn {
     width: 100%;
-    padding: 13px;
+    padding: 15px;
     background: #2e7d32;
     color: #fff;
     border: none;
     border-radius: 12px;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 800;
     cursor: pointer;
     flex-shrink: 0;
@@ -96,16 +106,7 @@
   .save-btn:disabled { background: #bbb; color: #fff; box-shadow: none; }
   .save-btn:active:not(:disabled) { background: #1b5e20; transform: scale(0.98); }
 
-  /* El header del mapa necesita ajuste de posición */
-  #screen-mapa .header { position: relative; z-index: 10; flex-shrink: 0; }
-  #screen-mapa .map-header-info { position: relative; z-index: 10; flex-shrink: 0; }
-
-  /* Recalcular top del mapa considerando header + info bar */
-  #screen-mapa.active #map {
-    top: 0;
-  }
-
-  .toast { position: fixed; bottom: 180px; left: 50%; transform: translateX(-50%); background: #1a472a; color: #fff; padding: 11px 22px; border-radius: 24px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; z-index: 9999; }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1a472a; color: #fff; padding: 11px 22px; border-radius: 24px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; z-index: 9999; }
   .toast.show { opacity: 1; }
 </style>
 </head>
@@ -113,7 +114,9 @@
 
 <!-- PANTALLA 1: RUTAS -->
 <div id="screen-rutas" class="screen active">
-  <div class="header"><div><h1>🥩 Proteam — Rutas</h1><div class="header-sub">Selecciona tu ruta del día</div></div></div>
+  <div class="header">
+    <div><h1>🥩 Proteam — Rutas</h1><div class="header-sub">Selecciona tu ruta del día</div></div>
+  </div>
   <div class="scroll-area">
     <div class="ruta-selector">
       <h2>¿Cuál ruta vas a hacer hoy?</h2>
@@ -157,25 +160,22 @@
   <div class="bottom-bar">
     <div class="coords-row">
       <div class="coords-display" id="coords-display">⏳ Obteniendo GPS...</div>
-      <button class="gps-btn" onclick="centerGPS()">📍 Mi GPS</button>
+      <button class="gps-btn" onclick="centerGPS()">📡 Mi GPS</button>
     </div>
-    <button class="save-btn" id="save-btn" onclick="guardarUbicacion()" disabled>💾 GUARDAR UBICACIÓN</button>
+    <button class="save-btn" id="save-btn" onclick="guardarUbicacion()" disabled>✅ Guardar ubicación</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const BASE = 'https://mayoristapip.bitrix24.co/rest/1/3f5r2cx2hfv0r9ve';
 const LAT_FIELD = 'UF_CRM_LAT';
 const LON_FIELD = 'UF_CRM_LON';
 
-let clientes = [], clienteActual = null;
-let gpsLat = null, gpsLon = null, pinLat = null, pinLon = null;
-let completados = new Set();
-let leafletMap = null, marker = null, mapIniciado = false;
+let leafletMap, marker, mapIniciado = false;
+let clientes = [], clienteActual = null, completados = new Set();
+let pinLat = null, pinLon = null, gpsLat = null, gpsLon = null;
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -187,7 +187,7 @@ function showScreen(id) {
   }
 }
 
-function showToast(msg, dur=2500) {
+function showToast(msg, dur = 2500) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), dur);
@@ -195,42 +195,42 @@ function showToast(msg, dur=2500) {
 
 function initMap() {
   mapIniciado = true;
-  const lat = gpsLat||8.7575, lon = gpsLon||-75.8811;
-  leafletMap = L.map('map', { zoomControl: true }).setView([lat,lon], 17);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(leafletMap);
+  const lat = gpsLat || 8.7575, lon = gpsLon || -75.8811;
+  leafletMap = L.map('map', { zoomControl: true }).setView([lat, lon], 17);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(leafletMap);
   const icon = L.divIcon({
     html: '<div style="width:34px;height:34px;background:#e53935;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.4)"></div>',
-    iconSize:[34,34], iconAnchor:[17,34], className:''
+    iconSize: [34, 34], iconAnchor: [17, 34], className: ''
   });
-  marker = L.marker([lat,lon], { icon, draggable:true }).addTo(leafletMap);
-  marker.on('drag dragend', e => { const p=e.target.getLatLng(); pinLat=p.lat; pinLon=p.lng; actualizarCoords(); });
-  leafletMap.on('click', e => { pinLat=e.latlng.lat; pinLon=e.latlng.lng; marker.setLatLng([pinLat,pinLon]); actualizarCoords(); });
+  marker = L.marker([lat, lon], { icon, draggable: true }).addTo(leafletMap);
+  marker.on('drag dragend', e => { const p = e.target.getLatLng(); pinLat = p.lat; pinLon = p.lng; actualizarCoords(); });
+  leafletMap.on('click', e => { pinLat = e.latlng.lat; pinLon = e.latlng.lng; marker.setLatLng([pinLat, pinLon]); actualizarCoords(); });
   setTimeout(() => leafletMap.invalidateSize(), 200);
 }
 
 function centerGPS() {
   showToast('📡 Obteniendo GPS...', 4000);
   navigator.geolocation.getCurrentPosition(pos => {
-    gpsLat=pos.coords.latitude; gpsLon=pos.coords.longitude;
-    pinLat=gpsLat; pinLon=gpsLon;
-    if(leafletMap) { leafletMap.setView([gpsLat,gpsLon],18); marker.setLatLng([gpsLat,gpsLon]); }
+    gpsLat = pos.coords.latitude; gpsLon = pos.coords.longitude;
+    pinLat = gpsLat; pinLon = gpsLon;
+    if (leafletMap) { leafletMap.setView([gpsLat, gpsLon], 18); marker.setLatLng([gpsLat, gpsLon]); }
     actualizarCoords();
-  }, ()=>showToast('❌ No se pudo obtener GPS'), { enableHighAccuracy:true, timeout:10000 });
+  }, () => showToast('❌ No se pudo obtener GPS'), { enableHighAccuracy: true, timeout: 10000 });
 }
 
 function actualizarCoords() {
-  if(pinLat&&pinLon) {
+  if (pinLat && pinLon) {
     document.getElementById('coords-display').textContent = `✅ ${pinLat.toFixed(6)}, ${pinLon.toFixed(6)}`;
     document.getElementById('save-btn').disabled = false;
   }
 }
 
 async function cargarConteos() {
-  for(const [sid,el] of [['UC_A9EFPQ','r1'],['UC_0DH0L0','r2'],['UC_V2203A','r3']]) {
+  for (const [sid, el] of [['UC_A9EFPQ', 'r1'], ['UC_0DH0L0', 'r2'], ['UC_V2203A', 'r3']]) {
     try {
-      const r = await fetch(`${BASE}/crm.deal.list.json`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filter:{CATEGORY_ID:'0',STAGE_ID:sid},select:['ID']})});
-      document.getElementById(`count-${el}`).textContent = ((await r.json()).result||[]).length;
-    } catch(e) { document.getElementById(`count-${el}`).textContent='?'; }
+      const r = await fetch(`${BASE}/crm.deal.list.json`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filter: { CATEGORY_ID: '0', STAGE_ID: sid }, select: ['ID'] }) });
+      document.getElementById(`count-${el}`).textContent = ((await r.json()).result || []).length;
+    } catch (e) { document.getElementById(`count-${el}`).textContent = '?'; }
   }
 }
 
@@ -241,25 +241,25 @@ async function seleccionarRuta(stageId, nombre) {
   document.getElementById('clientes-container').innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Consultando Bitrix...</span></div>';
   showScreen('screen-clientes');
   try {
-    const res = await fetch(`${BASE}/crm.deal.list.json`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filter:{CATEGORY_ID:'0',STAGE_ID:stageId},select:['ID','TITLE','CONTACT_ID']})});
-    const deals = (await res.json()).result||[];
-    if(!deals.length) {
-      document.getElementById('clientes-container').innerHTML='<div class="empty-state"><div style="font-size:40px">📋</div><span>Sin clientes en esta ruta hoy</span></div>';
-      document.getElementById('lista-sub').textContent='0 clientes'; return;
+    const res = await fetch(`${BASE}/crm.deal.list.json`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filter: { CATEGORY_ID: '0', STAGE_ID: stageId }, select: ['ID', 'TITLE', 'CONTACT_ID'] }) });
+    const deals = (await res.json()).result || [];
+    if (!deals.length) {
+      document.getElementById('clientes-container').innerHTML = '<div class="empty-state"><div style="font-size:40px">📋</div><span>Sin clientes en esta ruta hoy</span></div>';
+      document.getElementById('lista-sub').textContent = '0 clientes'; return;
     }
-    const cids = [...new Set(deals.map(d=>d.CONTACT_ID).filter(Boolean))];
+    const cids = [...new Set(deals.map(d => d.CONTACT_ID).filter(Boolean))];
     const cmap = {};
-    for(let i=0;i<cids.length;i+=50) {
-      const sl=cids.slice(i,i+50), cmds={};
-      sl.forEach((cid,idx)=>{ cmds[`c${idx}`]=`crm.contact.get?id=${cid}&select[]=NAME&select[]=LAST_NAME&select[]=UF_CRM_1709759251514&select[]=${LAT_FIELD}&select[]=${LON_FIELD}`; });
-      const bd=await(await fetch(`${BASE}/batch.json`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({halt:0,cmd:cmds})})).json();
-      const results=bd.result?.result||{};
-      sl.forEach((cid,idx)=>{ const c=results[`c${idx}`]||{}; cmap[String(cid)]={nombre:[c.NAME,c.LAST_NAME].filter(Boolean).join(' ')||'Sin nombre',ciudad:c.UF_CRM_1709759251514||'',lat:c[LAT_FIELD]||null,lon:c[LON_FIELD]||null}; });
+    for (let i = 0; i < cids.length; i += 50) {
+      const sl = cids.slice(i, i + 50), cmds = {};
+      sl.forEach((cid, idx) => { cmds[`c${idx}`] = `crm.contact.get?id=${cid}&select[]=NAME&select[]=LAST_NAME&select[]=UF_CRM_1709759251514&select[]=${LAT_FIELD}&select[]=${LON_FIELD}`; });
+      const bd = await (await fetch(`${BASE}/batch.json`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ halt: 0, cmd: cmds }) })).json();
+      const results = bd.result?.result || {};
+      sl.forEach((cid, idx) => { const c = results[`c${idx}`] || {}; cmap[String(cid)] = { nombre: [c.NAME, c.LAST_NAME].filter(Boolean).join(' ') || 'Sin nombre', ciudad: c.UF_CRM_1709759251514 || '', lat: c[LAT_FIELD] || null, lon: c[LON_FIELD] || null }; });
     }
-    clientes=deals.map(d=>({dealId:d.ID,contactId:d.CONTACT_ID,...(cmap[String(d.CONTACT_ID)]||{nombre:d.TITLE,ciudad:'',lat:null,lon:null})}));
+    clientes = deals.map(d => ({ dealId: d.ID, contactId: d.CONTACT_ID, ...(cmap[String(d.CONTACT_ID)] || { nombre: d.TITLE, ciudad: '', lat: null, lon: null }) }));
     renderClientes(); iniciarGPS();
-  } catch(e) {
-    document.getElementById('clientes-container').innerHTML='<div class="empty-state"><div style="font-size:40px">📡</div><span>Error de conexión</span></div>';
+  } catch (e) {
+    document.getElementById('clientes-container').innerHTML = '<div class="empty-state"><div style="font-size:40px">📡</div><span>Error de conexión</span></div>';
   }
 }
 
@@ -269,64 +269,61 @@ function navegarWaze(lat, lon, e) {
 }
 
 function renderClientes() {
-  const total=clientes.length, done=completados.size;
-  document.getElementById('progress').style.width=(total>0?(done/total)*100:0)+'%';
-  document.getElementById('lista-sub').textContent=`${total} clientes · ${done} marcados`;
-  document.getElementById('clientes-container').innerHTML=clientes.map(c=>{
-    const isDone=completados.has(c.dealId);
-    const ini=c.nombre.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
-    const btnNav=(c.lat&&c.lon)?`<button class="nav-btn" onclick="navegarWaze(${c.lat},${c.lon},event)">🗺️</button>`:'';
+  const total = clientes.length, done = completados.size;
+  document.getElementById('progress').style.width = (total > 0 ? (done / total) * 100 : 0) + '%';
+  document.getElementById('lista-sub').textContent = `${total} clientes · ${done} marcados`;
+  document.getElementById('clientes-container').innerHTML = clientes.map(c => {
+    const isDone = completados.has(c.dealId);
+    const ini = c.nombre.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+    const btnNav = (c.lat && c.lon) ? `<button class="nav-btn" onclick="navegarWaze(${c.lat},${c.lon},event)">🗺️</button>` : '';
     return `<div class="cliente-item" onclick="abrirMapa('${c.dealId}')">
-      <div class="cliente-avatar ${isDone?'marcado':''}">${ini}</div>
-      <div class="cliente-info"><strong>${c.nombre}</strong><span>${c.ciudad||'Sin ciudad'}</span></div>
+      <div class="cliente-avatar ${isDone ? 'marcado' : ''}">${ini}</div>
+      <div class="cliente-info"><strong>${c.nombre}</strong><span>${c.ciudad || 'Sin ciudad'}</span></div>
       ${btnNav}
-      <div class="cliente-status">${isDone?'✅':(c.lat&&c.lon)?'📍':'⚪'}</div>
+      <div class="cliente-status">${isDone ? '✅' : (c.lat && c.lon) ? '📍' : '⚪'}</div>
     </div>`;
   }).join('');
 }
 
 function abrirMapa(dealId) {
-  clienteActual=clientes.find(c=>c.dealId===dealId);
-  if(!clienteActual) return;
-  document.getElementById('map-nombre').textContent=clienteActual.nombre;
-  document.getElementById('map-ciudad').textContent=clienteActual.ciudad||'Sin ciudad';
-  document.getElementById('map-ubic-prev').textContent=(clienteActual.lat&&clienteActual.lon)?'📍 Ya tiene ubicación — puedes actualizarla':'';
-  document.getElementById('coords-display').textContent='⏳ Obteniendo GPS...';
-  document.getElementById('save-btn').disabled=true;
-  pinLat=null; pinLon=null;
+  clienteActual = clientes.find(c => c.dealId === dealId);
+  if (!clienteActual) return;
+  document.getElementById('map-nombre').textContent = clienteActual.nombre;
+  document.getElementById('map-ciudad').textContent = clienteActual.ciudad || 'Sin ciudad';
+  document.getElementById('map-ubic-prev').textContent = (clienteActual.lat && clienteActual.lon) ? '📍 Ya tiene ubicación — puedes actualizarla' : '';
+  document.getElementById('coords-display').textContent = '⏳ Obteniendo GPS...';
+  document.getElementById('save-btn').disabled = true;
+  pinLat = null; pinLon = null;
   showScreen('screen-mapa');
-  if(clienteActual.lat&&clienteActual.lon) {
-    const la=parseFloat(clienteActual.lat), lo=parseFloat(clienteActual.lon);
-    if(leafletMap){leafletMap.setView([la,lo],18);marker.setLatLng([la,lo]);}
-    pinLat=la; pinLon=lo; actualizarCoords();
+  if (clienteActual.lat && clienteActual.lon) {
+    const la = parseFloat(clienteActual.lat), lo = parseFloat(clienteActual.lon);
+    if (leafletMap) { leafletMap.setView([la, lo], 18); marker.setLatLng([la, lo]); }
+    pinLat = la; pinLon = lo; actualizarCoords();
   } else { centerGPS(); }
 }
 
 function iniciarGPS() {
-  if(!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(pos=>{gpsLat=pos.coords.latitude;gpsLon=pos.coords.longitude;},()=>{},{enableHighAccuracy:true});
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(pos => { gpsLat = pos.coords.latitude; gpsLon = pos.coords.longitude; }, () => {}, { enableHighAccuracy: true });
 }
 
 async function guardarUbicacion() {
-  if(!pinLat||!pinLon||!clienteActual) return;
-  const btn=document.getElementById('save-btn');
-  btn.textContent='Guardando...'; btn.disabled=true;
+  if (!pinLat || !pinLon || !clienteActual) return;
+  const btn = document.getElementById('save-btn');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
   try {
-    const fields={};
-    fields[LAT_FIELD]=pinLat.toFixed(6);
-    fields[LON_FIELD]=pinLon.toFixed(6);
-    const res=await fetch('https://proteamsas.app.n8n.cloud/webhook/guardar-ubicacion',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:clienteActual.contactId,lat:pinLat.toFixed(6),lon:pinLon.toFixed(6)})});
-    const data=await res.json();
-    if(data.ok) {
+    const res = await fetch('https://proteamsas.app.n8n.cloud/webhook/guardar-ubicacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contactId: clienteActual.contactId, lat: pinLat.toFixed(6), lon: pinLon.toFixed(6) }) });
+    const data = await res.json();
+    if (data.ok) {
       completados.add(clienteActual.dealId);
-      const idx=clientes.findIndex(c=>c.dealId===clienteActual.dealId);
-      if(idx>=0){clientes[idx].lat=pinLat;clientes[idx].lon=pinLon;}
+      const idx = clientes.findIndex(c => c.dealId === clienteActual.dealId);
+      if (idx >= 0) { clientes[idx].lat = pinLat; clientes[idx].lon = pinLon; }
       showToast('✅ Ubicación guardada en Bitrix');
-      setTimeout(()=>{showScreen('screen-clientes');renderClientes();},900);
+      setTimeout(() => { showScreen('screen-clientes'); renderClientes(); }, 900);
     } else throw new Error();
-  } catch(e) {
+  } catch (e) {
     showToast('❌ Error al guardar, reintenta');
-    btn.textContent='✅ Guardar ubicación'; btn.disabled=false;
+    btn.textContent = '✅ Guardar ubicación'; btn.disabled = false;
   }
 }
 
