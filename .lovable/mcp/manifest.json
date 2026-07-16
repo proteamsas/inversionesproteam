@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "sdk_version": "0.23.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "proteam-mcp",
+      "version": "0.1.0",
+      "title": "PROTEAM MCP"
+    },
+    "tools": [
+      {
+        "name": "get_contact_info",
+        "title": "Obtener información de contacto",
+        "description": "Devuelve el teléfono, WhatsApp, sitio web y ubicación de PROTEAM.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_products",
+        "title": "Listar productos",
+        "description": "Lista las categorías y productos que PROTEAM distribuye. Opcionalmente filtra por categoría (cerdo, pollo, visceras, pescado).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "enum": [
+                "cerdo",
+                "pollo",
+                "visceras",
+                "pescado"
+              ],
+              "description": "Categoría opcional para filtrar el listado."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_coverage",
+        "title": "Listar cobertura",
+        "description": "Devuelve las rutas de entrega y municipios cubiertos por PROTEAM en Córdoba, Sucre, Antioquia y Bolívar.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "whatsapp_lead_link",
+        "title": "Generar enlace de WhatsApp para cotizar",
+        "description": "Genera un enlace de WhatsApp (wa.me) hacia PROTEAM con un mensaje pre-llenado para solicitar cotización o información de un negocio.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "nombre_negocio": {
+              "type": "string",
+              "description": "Nombre del negocio del cliente."
+            },
+            "ciudad": {
+              "type": "string",
+              "description": "Ciudad del cliente."
+            },
+            "productos": {
+              "type": "string",
+              "description": "Productos o proteínas de interés."
+            },
+            "volumen": {
+              "type": "string",
+              "description": "Volumen estimado (kg/semana o similar)."
+            },
+            "mensaje_extra": {
+              "type": "string",
+              "description": "Notas adicionales al final del mensaje."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
